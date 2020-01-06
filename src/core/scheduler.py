@@ -1,4 +1,6 @@
 import random
+from .resources import Node
+from .workload import Task
 
 
 class BaseScheduler:
@@ -18,19 +20,37 @@ class BasicScheduler(BaseScheduler):
     def __init__(self, nodes):
         BaseScheduler.__init__(self, nodes)
 
-    def schedule(self, job):
-        pass
+    def add(self, job):
+        self.queue.append(job)
+
+    def satisfy(self, resources) -> bool:
+        assert isinstance(resources, dict)
+
+        return any(node.satisfy(resources)
+                   for node in self.nodes)
+
+    def find_node(self, resources) -> Node:
+        for node in self.nodes:
+            if node.satisfy(resources):
+                return node
+        return None
+
+    def schedule(self, job, node, alloc):
+        self.simulator.log('Job {} scheduled'.format(job))
+        self.simulator.env.process(job.run(self, node, alloc))
 
     def run(self):
         while True:
-            if self.queue:
-                yield self.simulator.env.timeout(1)
-                job = self.queue.pop()
+            for i, job in enumerate(self.queue):
+                node = self.find_node(job.resources)
+                if node:
+                    alloc = node.alloc(job.resources)
 
-                self.simulator.log('Job {} scheduled'.format(job))
-                self.simulator.env.process(job.run(self))
-            else:
-                self.simulator.env.step()
+                    self.queue.pop(i)
+                    self.schedule(job, node, alloc)
+
+            yield self.simulator.env.timeout(0)
+            self.simulator.env.step()
 
 
 class BaseDispatcher:
@@ -51,4 +71,4 @@ class RandomDispatcher(BaseDispatcher):
         # dispatch the job to scheduler
         scheduler = random.choice(self.schedulers)
 
-        scheduler.queue.append(job)
+        scheduler.add(job)

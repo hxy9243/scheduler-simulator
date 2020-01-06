@@ -5,7 +5,7 @@ sys.path.append('..')  # noqa
 
 from core.workload import UnifiedRandomWorkload
 from core.simulator import Simulator
-from core.node import Node, Cpu, Mem, Gpu
+from core.resources import Cpu, Mem, Gpu, Node
 from core.scheduler import BasicScheduler, RandomDispatcher
 
 
@@ -13,15 +13,16 @@ sim = Simulator({})
 
 sim.add_workload(UnifiedRandomWorkload())
 
-nodes = [Node([Gpu()])]
+nodes = [
+    Node(1, {'gpu': Gpu([1, 1, 1, 1])}),
+]
 for node in nodes:
     sim.add_node(node)
 
-dispatcher = RandomDispatcher([BasicScheduler([node])])
+dispatcher = RandomDispatcher([
+    BasicScheduler(nodes),
+])
 sim.add_dispatcher(dispatcher)
-
-# sim.add_scheduler(BasicScheduler([node]))
-
 sim.run()
 
 print(sim.inqueue.items)

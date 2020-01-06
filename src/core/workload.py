@@ -26,7 +26,8 @@ class UnifiedRandomWorkload(BaseWorkload):
 
     def generate(self):
         task = Task(self.simulator, self.jobid,
-                    self.jobid, random.randrange(20), [])
+                    self.jobid, random.randrange(20),
+                    resources={'gpu': [1, 1]})
         self.jobid += 1
         return task
 
@@ -34,10 +35,10 @@ class UnifiedRandomWorkload(BaseWorkload):
         assert self.simulator is not None, 'No simulator specified'
 
         while True:
-            yield self.simulator.env.timeout(random.randrange(20))
+            yield self.simulator.env.timeout(random.randrange(10))
             job = self.generate()
 
-            self.simulator.log('job {} arriving'.format(job))
+            self.simulator.log('Job {} arriving'.format(job))
             self.simulator.dispatch(job)
 
 
@@ -67,13 +68,15 @@ class Task:
         self.taskid = taskid
         self.task_runtime = task_runtime
         self.resources = resources
+        self.allocation = None
 
         self.created_time = simulator.env.now
         self.scheduled_time = None
         self.finished_time = None
 
         self.scheduler = None
-        self.status = TaskStatus.INIT
+        self.node = None
+        # self.status = TaskStatus.INIT
 
     def __repr__(self):
         return '<Task {}>'.format(self.taskid)
@@ -81,8 +84,10 @@ class Task:
     def assign(self, node):
         pass
 
-    def run(self, scheduler):
+    def run(self, scheduler, node, alloc):
         self.scheduler = scheduler
+        self.node = node
+        self.allocation = alloc
 
         assert self.simulator is not None, \
             'Task {} simulator is none'.format(self)
@@ -93,4 +98,6 @@ class Task:
         yield self.simulator.env.timeout(self.task_runtime)
 
         self.finished_time = self.simulator.env.now
+
         self.simulator.log('Task {} finished'.format(self))
+        self.node.dealloc(self.allocation)
