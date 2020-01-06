@@ -1,6 +1,8 @@
 from typing import List, Dict
 import copy
 
+from collections import defaultdict
+
 
 class Resource:
     def __init__(self):
@@ -15,6 +17,10 @@ class Resource:
 
     def dealloc(self, resource):
         raise NotImplementedError('Not implemented')
+
+    def utilization(self) -> float:
+        raise NotImplementedError('Not implemented')
+        return 0.0
 
 
 class Cpu(Resource):
@@ -35,6 +41,9 @@ class Cpu(Resource):
             'Error dealloc resources: remaining more than original'
         self.remaining += cpu
 
+    def utilization(self) -> float:
+        return (self.cpu - self.remaining) / self.cpu
+
 
 class Mem(Resource):
     def __init__(self, mem):
@@ -53,6 +62,9 @@ class Mem(Resource):
             'Error dealloc resources: remaining more than original'
         self.remaining += mem
 
+    def utilization(self) -> float:
+        return (self.mem - self.remaining) / self.mem
+
 
 class Gpu(Resource):
     def __init__(self, gpus: List[float]):
@@ -64,25 +76,25 @@ class Gpu(Resource):
     def __repr__(self):
         return '<GPU res, max: {}, remain: {}>'.format(self.gpus, self.remaining)
 
-    def satisfy(self, gpus: List[float]):
+    def satisfy(self, request):
         """ gpu requests are modeled as a list of memory requested for each gpu,
         assuming allocations are all from distinct gpus
         """
         # get the sorted remaining and requested memory, and see if all requests
         # can be satisfied
         availables = sorted(self.remaining, reverse=True)
-        requests = sorted(gpus, reverse=True)
+        requests = sorted(request.gpus, reverse=True)
 
         for i, req in enumerate(requests):
             if availables[i] < req:
                 return False
         return True
 
-    def alloc(self, gpus: List[float]) -> List[float]:
-        assert self.satisfy(gpus), 'Gpu resource not available'
+    def alloc(self, request):
+        assert self.satisfy(request), 'Gpu resource not available'
 
         alloc = [0.0 for _ in self.gpus]
-        for req in gpus:
+        for req in request.gpus:
             found = False
 
             for i, resource in enumerate(self.remaining):
@@ -94,13 +106,16 @@ class Gpu(Resource):
 
             assert found, 'Gpu resource could not be allocated'
 
-        return alloc
+        return Gpu(alloc)
 
-    def dealloc(self, gpus: List[float]):
-        for i, gpu in enumerate(gpus):
+    def dealloc(self, request):
+        for i, gpu in enumerate(request.gpus):
             self.remaining[i] += gpu
             assert self.remaining[i] <= self.gpus[i], \
                 'Error dealloc resources: remaining more than original'
+
+    def utilization(self) -> float:
+        return (sum(self.gpus) - sum(self.remaining)) / sum(self.gpus)
 
 
 class Node:
@@ -108,6 +123,10 @@ class Node:
         self.simulator = None
         self.node_id = node_id
         self.resources = resources
+
+        # gather statistics about the node
+        # self.records = DataFrame(columns=['cpu-util', 'mem-util', 'gpu-util'])
+        self.records = defaultdict(lambda: [(0, 0.0)])
 
     def __repr__(self):
         return 'Node {} with resources {}'.format(self.node_id, self.resources)
@@ -121,8 +140,20 @@ class Node:
         for name, resource in resources.items():
             ret[name] = self.resources[name].alloc(resource)
 
+        self.record('gpu-util', self.resources['gpu'].utilization())
+
         return ret
 
     def dealloc(self, resources: Dict[str, Resource]):
         for name, resource in resources.items():
             self.resources[name].dealloc(resource)
+
+        self.record('gpu-util', self.resources['gpu'].utilization())
+
+    def record(self, key: str, value: float):
+        #print((self.simulator.env.now, self.resources['gpu']))
+
+        self.records[key].append((self.simulator.env.now, value))
+
+    def get_records(self):
+        return self.records

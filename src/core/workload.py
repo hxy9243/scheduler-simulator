@@ -20,14 +20,20 @@ class UnifiedRandomWorkload(BaseWorkload):
     """ A basic Random Workload that generates jobs
     """
 
-    def __init__(self):
+    def __init__(self, income_range, task_timerange, resources):
         BaseWorkload.__init__(self)
+
+        self.income_range = income_range
+        self.task_timerange = task_timerange
+        self.resources = resources
+
         self.jobid = 1
 
     def generate(self):
         task = Task(self.simulator, self.jobid,
-                    self.jobid, random.randrange(40),
-                    resources={'gpu': [1, 1]})
+                    self.jobid,
+                    random.randrange(*self.task_timerange),
+                    resources=self.resources)
         self.jobid += 1
         return task
 
@@ -35,7 +41,7 @@ class UnifiedRandomWorkload(BaseWorkload):
         assert self.simulator is not None, 'No simulator specified'
 
         while True:
-            yield self.simulator.env.timeout(random.randrange(5))
+            yield self.simulator.env.timeout(*self.income_range)
             job = self.generate()
 
             self.simulator.log('Job {} arriving'.format(job))
@@ -96,8 +102,17 @@ class Task:
 
         self.scheduled_time = self.simulator.env.now
         yield self.simulator.env.timeout(self.task_runtime)
-
         self.finished_time = self.simulator.env.now
 
+        assert self.finished_time - self.created_time >= self.task_runtime
+
+        # record statistics
+        self.scheduler.record('task_runtime', self.task_runtime)
+        self.scheduler.record(
+            'task_waittime', self.scheduled_time - self.created_time)
+        self.scheduler.record(
+            'task_total', self.finished_time - self.created_time)
+
         self.simulator.log('Task {} finished'.format(self))
+
         self.node.dealloc(self.allocation)
