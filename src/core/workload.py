@@ -26,7 +26,7 @@ class UnifiedRandomWorkload(BaseWorkload):
 
     def generate(self):
         task = Task(self.simulator, self.jobid,
-                    self.jobid, random.randrange(20),
+                    self.jobid, random.randrange(40),
                     resources={'gpu': [1, 1]})
         self.jobid += 1
         return task
@@ -35,7 +35,7 @@ class UnifiedRandomWorkload(BaseWorkload):
         assert self.simulator is not None, 'No simulator specified'
 
         while True:
-            yield self.simulator.env.timeout(random.randrange(10))
+            yield self.simulator.env.timeout(random.randrange(5))
             job = self.generate()
 
             self.simulator.log('Job {} arriving'.format(job))

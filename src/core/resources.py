@@ -94,12 +94,9 @@ class Gpu(Resource):
 
             assert found, 'Gpu resource could not be allocated'
 
-        print('allocation: ', alloc)
         return alloc
 
     def dealloc(self, gpus: List[float]):
-        print('deallocation: ', gpus)
-
         for i, gpu in enumerate(gpus):
             self.remaining[i] += gpu
             assert self.remaining[i] <= self.gpus[i], \

@@ -1,11 +1,12 @@
+from typing import List, Dict
+
 import random
-from .resources import Node
+from .resources import Node, Resource
 from .workload import Task
 
 
 class BaseScheduler:
-    def __init__(self, nodes):
-        self.nodes = nodes
+    def __init__(self):
         self.queue = []
         self.simulator = None
 
@@ -17,20 +18,21 @@ class BaseScheduler:
 
 
 class BasicScheduler(BaseScheduler):
-    def __init__(self, nodes):
-        BaseScheduler.__init__(self, nodes)
+    def __init__(self):
+        BaseScheduler.__init__(self)
 
     def add(self, job):
         self.queue.append(job)
 
-    def satisfy(self, resources) -> bool:
-        assert isinstance(resources, dict)
+    def satisfy(self, resources: Dict[str, Resource]) -> bool:
+        assert isinstance(resources, dict), \
+            'Resource should be described as dictionary'
 
         return any(node.satisfy(resources)
-                   for node in self.nodes)
+                   for node in self.simulator.nodes)
 
     def find_node(self, resources) -> Node:
-        for node in self.nodes:
+        for node in self.simulator.nodes:
             if node.satisfy(resources):
                 return node
         return None
@@ -40,6 +42,8 @@ class BasicScheduler(BaseScheduler):
         self.simulator.env.process(job.run(self, node, alloc))
 
     def run(self):
+        assert self.simulator is not None, 'Scheduler simulator is none'
+
         while True:
             for i, job in enumerate(self.queue):
                 node = self.find_node(job.resources)
@@ -54,7 +58,7 @@ class BasicScheduler(BaseScheduler):
 
 
 class BaseDispatcher:
-    def __init__(self, schedulers):
+    def __init__(self, schedulers: List[BaseScheduler]):
         self.simulator = None
         self.schedulers = schedulers
 

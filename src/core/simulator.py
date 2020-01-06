@@ -13,15 +13,22 @@ class Logging():
 
 
 class Simulator:
-    def __init__(self, config):
+    def __init__(self, workloads, nodes, dispatcher, configs):
         self.env = simpy.Environment()
         self.logs = []
         self.inqueue = simpy.Store(self.env)
 
         self.workloads = []
         self.nodes = []
-        self.schedulers = []
-        self.dispatcher = None
+
+        for workload in workloads:
+            self.add_workload(workload)
+
+        for node in nodes:
+            self.add_node(node)
+
+        self.add_dispatcher(dispatcher)
+        self.configs = configs
 
     def log(self, msg):
         self.logs.append((self.env.now, msg))
@@ -38,10 +45,6 @@ class Simulator:
         node.simulator = self
         self.nodes.append(node)
 
-    def add_scheduler(self, scheduler):
-        scheduler.simulator = self
-        self.schedulers.append(scheduler)
-
     def add_dispatcher(self, dispatcher):
         dispatcher.simulator = self
         self.dispatcher = dispatcher
@@ -50,9 +53,6 @@ class Simulator:
 
     def dispatch(self, job):
         self.dispatcher.dispatch(job)
-        # def dispatch_schedulers(self):
-        #     while True:
-        #         if
 
     def run(self, until=200):
         for workload in self.workloads:
