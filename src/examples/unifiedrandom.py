@@ -13,18 +13,17 @@ from matplotlib import pyplot as plt
 sim = Simulator(
     workloads=[
         UnifiedRandomWorkload(income_range=(4, 16),
-                              task_timerange=(2, 12),
+                              task_timerange=(4, 24),
                               resources={'gpu': Gpu([0.5, 0.5])}),
     ],
     nodes=[Node(1, {'gpu': Gpu([1, 1, 1, 1])})],
     dispatcher=RandomDispatcher([BasicScheduler()]),
     configs={},
 )
-
 sim.run(until=2000)
 
+# Print out the node statistics
 node_stats = sim.nodes[0].get_records()
-
 index = [t[0] for t in node_stats['gpu-util']]
 value = [t[1] for t in node_stats['gpu-util']]
 
@@ -32,8 +31,7 @@ plt.plot(index, value)
 plt.title('gpu utilization')
 plt.show()
 
-print(sim.dispatcher.schedulers[0])
-
+# Print out the task statistics
 s_rec = sim.dispatcher.schedulers[0].records
 task_runtime = [v[1] for v in s_rec['task_runtime']]
 task_waittime = [v[1] for v in s_rec['task_waittime']]

@@ -94,17 +94,23 @@ class Gpu(Resource):
         assert self.satisfy(request), 'Gpu resource not available'
 
         alloc = [0.0 for _ in self.gpus]
+        alloced = set()
+
         for req in request.gpus:
             found = False
 
             for i, resource in enumerate(self.remaining):
-                if req <= resource:
+                if i not in alloced and req <= resource:
                     self.remaining[i] -= req
                     alloc[i] = req
+                    alloced.add(i)
                     found = True
                     break
 
             assert found, 'Gpu resource could not be allocated'
+
+        print('available', self.remaining,
+              'requests', request, 'alloced', alloc)
 
         return Gpu(alloc)
 
@@ -125,7 +131,7 @@ class Node:
         self.resources = resources
 
         # gather statistics about the node
-        # self.records = DataFrame(columns=['cpu-util', 'mem-util', 'gpu-util'])
+        self.tasks = 0
         self.records = defaultdict(lambda: [(0, 0.0)])
 
     def __repr__(self):
@@ -140,6 +146,11 @@ class Node:
         for name, resource in resources.items():
             ret[name] = self.resources[name].alloc(resource)
 
+        self.tasks += 1
+        self.record('tasks', self.tasks)
+
+        print('tasks', self.tasks)
+
         self.record('gpu-util', self.resources['gpu'].utilization())
 
         return ret
@@ -148,6 +159,8 @@ class Node:
         for name, resource in resources.items():
             self.resources[name].dealloc(resource)
 
+        self.tasks -= 1
+        self.record('tasks', self.tasks)
         self.record('gpu-util', self.resources['gpu'].utilization())
 
     def record(self, key: str, value: float):
