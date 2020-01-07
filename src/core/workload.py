@@ -1,35 +1,46 @@
+from typing import List, Dict, Tuple, Union, Optional
+
 from enum import Enum, auto
 import random
 
+from .resources import Resource
+from .simulator import Simulator
 
-class BaseWorkload:
+
+class Workload:
     """ Define a type of workload, that generates a category of jobs
     """
 
     def __init__(self):
-        self.simulator = None
+        self.simulator: Optional[Simulator] = None
 
-    def generate(self):
-        raise NotImplementedError('Not implemented')
+    def generate(self) -> Union['Task', 'Job']:
+        # raise NotImplementedError('Not implemented')
+        pass
 
     def run(self):
-        raise NotImplementedError('Not implemented')
+        #raise NotImplementedError('Not implemented')
+        pass
 
 
-class UnifiedRandomWorkload(BaseWorkload):
+class UnifiedRandomWorkload(Workload):
     """ A basic Random Workload that generates jobs
     """
 
-    def __init__(self, income_range, task_timerange, resources):
-        BaseWorkload.__init__(self)
+    def __init__(self, income_range: Tuple[int], task_timerange: Tuple[int],
+                 resources: List[Resource]):
+        Workload.__init__(self)
 
         self.income_range = income_range
         self.task_timerange = task_timerange
         self.resources = resources
+        self.simulator: Optional[Simulator] = None
 
         self.jobid = 1
 
-    def generate(self):
+    def generate(self) -> Union['Task', 'Job']:
+        assert self.simulator, 'Simulator of workload not initialized'
+
         task = Task(self.simulator, self.jobid,
                     self.jobid,
                     random.randrange(*self.task_timerange),
@@ -52,7 +63,7 @@ class Job:
     """ Define a job, which consists of multiple tasks
     """
 
-    def __init__(self, jobid, tasks):
+    def __init__(self, jobid: int, tasks: List['Task']):
         self.jobid = jobid
         self.tasks = tasks
 
@@ -68,21 +79,21 @@ class Task:
     nodes, and execute a certain amount of time
     """
 
-    def __init__(self, simulator, jobid, taskid, task_runtime, resources):
+    def __init__(self, simulator: Simulator, jobid: int, taskid: int,
+                 task_runtime: float, resources: List['Resource']):
         self.simulator = simulator
         self.jobid = jobid
         self.taskid = taskid
         self.task_runtime = task_runtime
         self.resources = resources
-        self.allocation = None
+        self.allocation: Optional[Resource] = None
 
         self.created_time = simulator.env.now
-        self.scheduled_time = None
-        self.finished_time = None
+        self.scheduled_time: float = 0.0
+        self.finished_time: float = 0.0
 
-        self.scheduler = None
-        self.node = None
-        # self.status = TaskStatus.INIT
+        self.node: Optional[Node] = None
+        self.status = TaskStatus.INIT
 
     def __repr__(self):
         return '<Task {}>'.format(self.taskid)
@@ -101,6 +112,8 @@ class Task:
             'Task {} scheduler is none'.format(self)
 
         self.scheduled_time = self.simulator.env.now
+        self.status = TaskStatus.RUNNING
+
         yield self.simulator.env.timeout(self.task_runtime)
         self.finished_time = self.simulator.env.now
 
@@ -116,3 +129,4 @@ class Task:
         self.simulator.log('Task {} finished'.format(self))
 
         self.node.dealloc(self.allocation)
+        self.status = TaskStatus.FINISHED

@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict, Tuple, Set, Any
 import copy
 
 from collections import defaultdict
@@ -12,10 +12,10 @@ class Resource:
         raise NotImplementedError('Not implemented')
         return False
 
-    def alloc(self, resource):
+    def alloc(self, resource) -> Any:
         raise NotImplementedError('Not implemented')
 
-    def dealloc(self, resource):
+    def dealloc(self, resource) -> None:
         raise NotImplementedError('Not implemented')
 
     def utilization(self) -> float:
@@ -124,7 +124,7 @@ class Gpu(Resource):
 
 class Node:
     def __init__(self, node_id: int, resources: Dict[str, Resource]):
-        self.simulator = None
+        self.simulator: 'Simulator' = None
         self.node_id = node_id
         self.resources = resources
 

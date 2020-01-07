@@ -3,10 +3,9 @@ import random
 from collections import defaultdict
 
 from .resources import Node, Resource
-from .workload import Task
 
 
-class BaseScheduler:
+class Scheduler:
     def __init__(self):
         self.queue = []
         self.simulator = None
@@ -18,9 +17,9 @@ class BaseScheduler:
         raise NotImplementedError('Not implemented')
 
 
-class BasicScheduler(BaseScheduler):
+class BasicScheduler(Scheduler):
     def __init__(self):
-        BaseScheduler.__init__(self)
+        Scheduler.__init__(self)
 
         self.records = defaultdict(list)
 
@@ -68,19 +67,22 @@ class BasicScheduler(BaseScheduler):
         self.records[key].append((self.simulator.env.now, value))
 
 
-class BaseDispatcher:
-    def __init__(self, schedulers: List[BaseScheduler]):
-        self.simulator = None
+class Dispatcher:
+    def __init__(self, schedulers: List[Scheduler]):
+        self.simulator: Optional['Simulator'] = None
         self.schedulers = schedulers
 
     def add_scheduler(self, scheduler):
         scheduler.simulator = self.simulator
         self.schedulers.append(scheduler)
 
+    def dispatch(self, job):
+        raise NotImplementedError('Not implemented')
 
-class RandomDispatcher(BaseDispatcher):
+
+class RandomDispatcher(Dispatcher):
     def __init__(self, schedulers):
-        BaseDispatcher.__init__(self, schedulers)
+        Dispatcher.__init__(self, schedulers)
 
     def dispatch(self, job):
         # dispatch the job to scheduler

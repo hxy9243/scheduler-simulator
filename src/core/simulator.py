@@ -1,5 +1,8 @@
+from typing import List, Dict, Any, Union
+
+from .scheduler import Dispatcher, Scheduler, RandomDispatcher
+
 import simpy
-from .scheduler import RandomDispatcher
 
 
 def Log():
@@ -13,13 +16,14 @@ class Logging():
 
 
 class Simulator:
-    def __init__(self, workloads, nodes, dispatcher, configs):
+    def __init__(self, workloads: List['Workload'], nodes: List['Node'],
+                 dispatcher: Dispatcher, configs: Dict[str, Any]):
         self.env = simpy.Environment()
-        self.logs = []
+        self.logs: List[Any] = []
         self.inqueue = simpy.Store(self.env)
 
-        self.workloads = []
-        self.nodes = []
+        self.workloads: List['Workload'] = []
+        self.nodes: List['Node'] = []
 
         for workload in workloads:
             self.add_workload(workload)
@@ -37,21 +41,21 @@ class Simulator:
         for log in self.logs:
             print(log[0], log[1])
 
-    def add_workload(self, workload):
+    def add_workload(self, workload: 'Workload'):
         workload.simulator = self
         self.workloads.append(workload)
 
-    def add_node(self, node):
+    def add_node(self, node: 'Node'):
         node.simulator = self
         self.nodes.append(node)
 
-    def add_dispatcher(self, dispatcher):
+    def add_dispatcher(self, dispatcher: Dispatcher):
         dispatcher.simulator = self
         self.dispatcher = dispatcher
         for scheduler in self.dispatcher.schedulers:
             scheduler.simulator = self
 
-    def dispatch(self, job):
+    def dispatch(self, job: Union['Job', 'Task']):
         self.dispatcher.dispatch(job)
 
     def run(self, until=200):

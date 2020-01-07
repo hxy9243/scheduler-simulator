@@ -3,7 +3,7 @@ import sys
 
 sys.path.append('..')  # noqa
 
-from core.workload import UnifiedRandomWorkload
+from core.workload import Workload, Task, Job, UnifiedRandomWorkload
 from core.simulator import Simulator
 from core.resources import Cpu, Mem, Gpu, Node
 from core.scheduler import BasicScheduler, RandomDispatcher
@@ -13,17 +13,17 @@ from matplotlib import pyplot as plt
 sim = Simulator(
     workloads=[
         UnifiedRandomWorkload(income_range=(4, 16),
-                              task_timerange=(4, 24),
+                              task_timerange=(7, 24),
                               resources={'gpu': Gpu([0.5, 0.5])}),
     ],
     nodes=[Node(1, {'gpu': Gpu([1, 1, 1, 1])})],
     dispatcher=RandomDispatcher([BasicScheduler()]),
     configs={},
 )
-sim.run(until=2000)
+sim.run(until=10000)
 
 # Print out the node statistics
-node_stats = sim.nodes[0].get_records()
+node_stats = sim.nodes[0].records
 index = [t[0] for t in node_stats['gpu-util']]
 value = [t[1] for t in node_stats['gpu-util']]
 
