@@ -28,7 +28,7 @@ class Cpu(Resource):
         self.cpu = cpu
         self.remaining = cpu
 
-    def satisfy(self, cpu):
+    def satisfy(self, cpu) -> bool:
         return self.remaining >= cpu
 
     def alloc(self, cpu) -> float:
@@ -56,6 +56,7 @@ class Mem(Resource):
     def alloc(self, mem) -> float:
         assert self.satisfy(mem), 'Mem resource not available'
         self.remaining -= mem
+        return mem
 
     def dealloc(self, mem):
         assert self.remaining+mem <= self.mem, \
@@ -109,9 +110,6 @@ class Gpu(Resource):
 
             assert found, 'Gpu resource could not be allocated'
 
-        print('available', self.remaining,
-              'requests', request, 'alloced', alloc)
-
         return Gpu(alloc)
 
     def dealloc(self, request):
@@ -132,7 +130,7 @@ class Node:
 
         # gather statistics about the node
         self.tasks = 0
-        self.records = defaultdict(lambda: [(0, 0.0)])
+        self.records: Dict[str, tuple] = defaultdict(lambda: [(0, 0.0)])
 
     def __repr__(self):
         return 'Node {} with resources {}'.format(self.node_id, self.resources)
@@ -148,8 +146,6 @@ class Node:
 
         self.tasks += 1
         self.record('tasks', self.tasks)
-
-        print('tasks', self.tasks)
 
         self.record('gpu-util', self.resources['gpu'].utilization())
 
