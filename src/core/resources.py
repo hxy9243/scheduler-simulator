@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple, Set
 import copy
 
 from collections import defaultdict
@@ -24,19 +24,19 @@ class Resource:
 
 
 class Cpu(Resource):
-    def __init__(self, cpu):
+    def __init__(self, cpu: float):
         self.cpu = cpu
         self.remaining = cpu
 
-    def satisfy(self, cpu) -> bool:
+    def satisfy(self, cpu: float) -> bool:
         return self.remaining >= cpu
 
-    def alloc(self, cpu) -> float:
+    def alloc(self, cpu: float) -> float:
         assert self.satisfy(cpu), 'Cpu resource not available'
         self.remaining -= cpu
         return cpu
 
-    def dealloc(self, cpu):
+    def dealloc(self, cpu: float):
         assert self.remaining+cpu <= self.cpu, \
             'Error dealloc resources: remaining more than original'
         self.remaining += cpu
@@ -46,19 +46,19 @@ class Cpu(Resource):
 
 
 class Mem(Resource):
-    def __init__(self, mem):
+    def __init__(self, mem: float):
         self.mem = mem
         self.remaining = mem
 
-    def satisfy(self, mem):
+    def satisfy(self, mem: float) -> bool:
         return self.remaining >= mem
 
-    def alloc(self, mem) -> float:
+    def alloc(self, mem: float) -> float:
         assert self.satisfy(mem), 'Mem resource not available'
         self.remaining -= mem
         return mem
 
-    def dealloc(self, mem):
+    def dealloc(self, mem: float):
         assert self.remaining+mem <= self.mem, \
             'Error dealloc resources: remaining more than original'
         self.remaining += mem
@@ -77,7 +77,7 @@ class Gpu(Resource):
     def __repr__(self):
         return '<GPU res, max: {}, remain: {}>'.format(self.gpus, self.remaining)
 
-    def satisfy(self, request):
+    def satisfy(self, request: 'Gpu') -> bool:
         """ gpu requests are modeled as a list of memory requested for each gpu,
         assuming allocations are all from distinct gpus
         """
@@ -91,11 +91,11 @@ class Gpu(Resource):
                 return False
         return True
 
-    def alloc(self, request):
+    def alloc(self, request: 'Gpu') -> 'Gpu':
         assert self.satisfy(request), 'Gpu resource not available'
 
         alloc = [0.0 for _ in self.gpus]
-        alloced = set()
+        alloced: Set[int] = set()
 
         for req in request.gpus:
             found = False
@@ -123,24 +123,24 @@ class Gpu(Resource):
 
 
 class Node:
-    def __init__(self, node_id, resources: Dict[str, Resource]):
+    def __init__(self, node_id: int, resources: Dict[str, Resource]):
         self.simulator = None
         self.node_id = node_id
         self.resources = resources
 
         # gather statistics about the node
         self.tasks = 0
-        self.records: Dict[str, tuple] = defaultdict(lambda: [(0, 0.0)])
+        self.records: Dict[str, List[tuple]] = defaultdict(lambda: [(0, 0.0)])
 
     def __repr__(self):
         return 'Node {} with resources {}'.format(self.node_id, self.resources)
 
-    def satisfy(self, resources: Dict[str, Resource]):
+    def satisfy(self, resources: Dict[str, Resource]) -> bool:
         return all(self.resources[name].satisfy(resource)
                    for name, resource in resources.items())
 
-    def alloc(self, resources: Dict[str, Resource]):
-        ret = {}
+    def alloc(self, resources: Dict[str, Resource]) -> Dict[str, Resource]:
+        ret: Dict[str, Resource] = {}
         for name, resource in resources.items():
             ret[name] = self.resources[name].alloc(resource)
 
@@ -160,9 +160,7 @@ class Node:
         self.record('gpu-util', self.resources['gpu'].utilization())
 
     def record(self, key: str, value: float):
-        #print((self.simulator.env.now, self.resources['gpu']))
+        assert self.simulator is not None, \
+            'Simulator not initialized when recording'
 
         self.records[key].append((self.simulator.env.now, value))
-
-    def get_records(self):
-        return self.records

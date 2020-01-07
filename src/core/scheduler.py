@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 import random
 from collections import defaultdict
 
@@ -34,7 +34,7 @@ class BasicScheduler(BaseScheduler):
         return any(node.satisfy(resources)
                    for node in self.simulator.nodes)
 
-    def find_node(self, resources) -> Node:
+    def find_node(self, resources) -> Optional[Node]:
         for node in self.simulator.nodes:
             if node.satisfy(resources):
                 return node
