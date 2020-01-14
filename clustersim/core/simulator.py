@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Union
 
 from .scheduler import Dispatcher, Scheduler, RandomDispatcher
 from .resources import Node
+from .workload import Workload
 
 import simpy
 
