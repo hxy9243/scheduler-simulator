@@ -75,6 +75,7 @@ parts/
 sdist/
 var/
 wheels/
+env/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
@@ -182,6 +183,7 @@ tags
 .vim
 
 ### VisualStudioCode ###
+.vscode/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json

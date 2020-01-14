@@ -1,0 +1,38 @@
+from setuptools import setup, find_packages
+
+setup(
+    name='clustersim',
+    version='0.0.1',
+    author='Kevin Hu',
+    author_email='hxy9243#gmail.com',
+    description='A discrete event cluster resource scheduler simulator',
+    long_description='A discrete event cluster resource scheduler simulator',
+    url='https://github.com/hxy9243/scheduler_simulator',
+    license='MIT License',
+    install_requires=['simpy'],
+    packages=find_packages(where='.'),
+    package_dir={
+        'clustersim': '',
+        'clustersim.core': 'clustersim/core',
+    },
+    include_package_data=True,
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Natural Language :: English',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',        
+        'Programming Language :: Python :: 3.7',                
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: PyPy',
+        'Topic :: Scientific/Engineering',
+    ],
+)

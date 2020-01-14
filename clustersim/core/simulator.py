@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Union
 
 from .scheduler import Dispatcher, Scheduler, RandomDispatcher
+from .resources import Node
 
 import simpy
 

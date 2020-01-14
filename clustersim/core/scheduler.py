@@ -9,6 +9,7 @@ class Scheduler:
     def __init__(self):
         self.queue = []
         self.simulator = None
+        self.records = []
 
     def schedule(self, task):
         raise NotImplementedError('Not implemented')

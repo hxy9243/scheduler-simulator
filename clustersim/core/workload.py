@@ -3,8 +3,7 @@ from typing import List, Dict, Tuple, Union, Optional
 from enum import Enum, auto
 import random
 
-from .resources import Resource
-from .simulator import Simulator
+from .resources import Resource, Node
 
 
 class Workload:
@@ -12,29 +11,27 @@ class Workload:
     """
 
     def __init__(self):
-        self.simulator: Optional[Simulator] = None
+        self.simulator: Optional['Simulator'] = None
 
     def generate(self) -> Union['Task', 'Job']:
-        # raise NotImplementedError('Not implemented')
-        pass
+        raise NotImplementedError('Not implemented')
 
     def run(self):
-        #raise NotImplementedError('Not implemented')
-        pass
-
+        raise NotImplementedError('Not implemented')
+        
 
 class UnifiedRandomWorkload(Workload):
     """ A basic Random Workload that generates jobs
     """
 
-    def __init__(self, income_range: Tuple[int], task_timerange: Tuple[int],
-                 resources: List[Resource]):
+    def __init__(self, income_range: Tuple[int, int], task_timerange: Tuple[int, int],
+                 resources: Dict[str, 'Resource']):
         Workload.__init__(self)
 
         self.income_range = income_range
         self.task_timerange = task_timerange
         self.resources = resources
-        self.simulator: Optional[Simulator] = None
+        self.simulator: Optional['Simulator'] = None
 
         self.jobid = 1
 
@@ -43,7 +40,7 @@ class UnifiedRandomWorkload(Workload):
 
         task = Task(self.simulator, self.jobid,
                     self.jobid,
-                    random.randrange(*self.task_timerange),
+                    random.uniform(*self.task_timerange),
                     resources=self.resources)
         self.jobid += 1
         return task
@@ -52,7 +49,7 @@ class UnifiedRandomWorkload(Workload):
         assert self.simulator is not None, 'No simulator specified'
 
         while True:
-            yield self.simulator.env.timeout(*self.income_range)
+            yield self.simulator.env.timeout(random.uniform(*self.income_range))
             job = self.generate()
 
             self.simulator.log('Job {} arriving'.format(job))
@@ -79,8 +76,8 @@ class Task:
     nodes, and execute a certain amount of time
     """
 
-    def __init__(self, simulator: Simulator, jobid: int, taskid: int,
-                 task_runtime: float, resources: List['Resource']):
+    def __init__(self, simulator: 'Simulator', jobid: int, taskid: int,
+                 task_runtime: float, resources: Dict[str, 'Resource']):
         self.simulator = simulator
         self.jobid = jobid
         self.taskid = taskid
@@ -92,7 +89,7 @@ class Task:
         self.scheduled_time: float = 0.0
         self.finished_time: float = 0.0
 
-        self.node: Optional[Node] = None
+        self.node: Optional['Node'] = None
         self.status = TaskStatus.INIT
 
     def __repr__(self):
@@ -114,6 +111,7 @@ class Task:
         self.scheduled_time = self.simulator.env.now
         self.status = TaskStatus.RUNNING
 
+        # run the actual task
         yield self.simulator.env.timeout(self.task_runtime)
         self.finished_time = self.simulator.env.now
 

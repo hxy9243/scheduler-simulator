@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Set, Any
+from typing import List, Dict, Tuple, Set, Any, Optional
 import copy
 
 from collections import defaultdict
@@ -124,7 +124,7 @@ class Gpu(Resource):
 
 class Node:
     def __init__(self, node_id: int, resources: Dict[str, Resource]):
-        self.simulator: 'Simulator' = None
+        self.simulator: Optional['Simulator'] = None
         self.node_id = node_id
         self.resources = resources
 

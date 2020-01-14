@@ -1,26 +1,21 @@
-import simpy
-import sys
-
-sys.path.append('..')  # noqa
-
-from core.workload import Workload, Task, Job, UnifiedRandomWorkload
-from core.simulator import Simulator
-from core.resources import Cpu, Mem, Gpu, Node
-from core.scheduler import BasicScheduler, RandomDispatcher
+from clustersim.core.workload import Task, Job, UnifiedRandomWorkload
+from clustersim.core.resources import Cpu, Mem, Gpu, Node
+from clustersim.core.scheduler import BasicScheduler, RandomDispatcher
+from clustersim.core.simulator import Simulator
 
 from matplotlib import pyplot as plt
 
 sim = Simulator(
     workloads=[
-        UnifiedRandomWorkload(income_range=(4, 16),
-                              task_timerange=(7, 24),
+        UnifiedRandomWorkload(income_range=(4, 12),
+                              task_timerange=(16, 36),
                               resources={'gpu': Gpu([0.5, 0.5])}),
     ],
     nodes=[Node(1, {'gpu': Gpu([1, 1, 1, 1])})],
     dispatcher=RandomDispatcher([BasicScheduler()]),
     configs={},
 )
-sim.run(until=10000)
+sim.run(until=20000)
 
 # Print out the node statistics
 node_stats = sim.nodes[0].records
