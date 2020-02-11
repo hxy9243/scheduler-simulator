@@ -5,6 +5,9 @@ from collections import defaultdict
 
 from simpy import Environment
 
+AllocType = Dict[str, 'Resource']
+
+
 class Resource:
     def __init__(self):
         pass
@@ -124,10 +127,10 @@ class Gpu(Resource):
 
 
 class Node:
-    def __init__(self, env, node_id: int, resources: Dict[str, Resource]):
+    def __init__(self, env, node_id: int, resources: AllocType):
         self.env: Optional[Environment] = env
         self.node_id: int = node_id
-        self.resources: Dict[str, Resource] = resources
+        self.resources: AllocType = resources
 
         # gather statistics about the node
         self.tasks = 0
@@ -136,12 +139,12 @@ class Node:
     def __repr__(self):
         return 'Node {} with resources {}'.format(self.node_id, self.resources)
 
-    def satisfy(self, resources: Dict[str, Resource]) -> bool:
+    def satisfy(self, resources: AllocType) -> bool:
         return all(self.resources[name].satisfy(resource)
                    for name, resource in resources.items())
 
-    def alloc(self, resources: Dict[str, Resource]) -> Dict[str, Resource]:
-        ret: Dict[str, Resource] = {}
+    def alloc(self, resources: AllocType) -> AllocType:
+        ret: AllocType = {}
         for name, resource in resources.items():
             ret[name] = self.resources[name].alloc(resource)
 
@@ -152,7 +155,7 @@ class Node:
 
         return ret
 
-    def dealloc(self, resources: Dict[str, Resource]):
+    def dealloc(self, resources: AllocType):
         for name, resource in resources.items():
             self.resources[name].dealloc(resource)
 

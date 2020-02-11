@@ -4,18 +4,18 @@ from collections import defaultdict
 
 from simpy import Environment
 
-from clustersim.core.resources import Node, Resource
-from clustersim.core.workload import Workload, Job, Task
+from clustersim.core.resources import Node, Resource, AllocType
+from clustersim.core.workload import Workload, Work
 
 
 class Scheduler:
     def __init__(self, env: Environment, nodes: List[Node]):
-        self.queue: List[Union[Task, Job]] = []
+        self.queue: List[Work] = []
         self.env: Environment = env
         self.nodes: List[Node] = nodes
         self.records: defaultdict = defaultdict(list)
 
-    def schedule(self, task):
+    def schedule(self, work: Work, node: Node, alloc: AllocType):
         raise NotImplementedError('Not implemented')
 
     def run(self):
@@ -29,7 +29,7 @@ class BasicScheduler(Scheduler):
     def add(self, job):
         self.queue.append(job)
 
-    def satisfy(self, resources: Dict[str, Resource]) -> bool:
+    def satisfy(self, resources: AllocType) -> bool:
         assert isinstance(resources, dict), \
             'Resource should be described as dictionary'
 
@@ -41,11 +41,11 @@ class BasicScheduler(Scheduler):
                 return node
         return None
 
-    def schedule(self, job, node, alloc):
+    def schedule(self, work: Work, node: Node, alloc: AllocType):
         # self.simulator.log('Job {} scheduled'.format(job))
 
-        job.scheduled_time = self.env.now
-        self.env.process(job.run(self.records, node, alloc))
+        work.scheduled_time = self.env.now
+        self.env.process(work.run(self.records, node, alloc))
 
     def run(self):
         assert self.env is not None, 'Scheduler environment is none'

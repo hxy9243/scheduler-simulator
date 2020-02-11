@@ -7,14 +7,8 @@ from clustersim.core.workload import Workload, Task, Job
 import simpy
 
 
-def Log():
-    def __init__(self):
-        pass
-
-
-class Logging():
-    def __init__(self):
-        pass
+def log():
+    pass
 
 
 class Simulator:
@@ -22,7 +16,6 @@ class Simulator:
                  workloads: List[Workload], nodes: List[Node],
                  dispatcher: Dispatcher, configs: Dict[str, Any]):
         self.env: simpy.Environment = env
-        self.logs: List[Any] = []
         self.inqueue: simpy.Store = simpy.Store(self.env)
 
         self.nodes = nodes
