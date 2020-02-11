@@ -70,7 +70,6 @@ class UnifiedRandomWorkload(Workload):
             self.queue.append(job)
 
 
-
 class Job:
     """ Define a job, which consists of multiple tasks
     """
