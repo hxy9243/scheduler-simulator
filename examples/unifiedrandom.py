@@ -4,17 +4,20 @@ from clustersim.core.scheduler import BasicScheduler, RandomDispatcher
 from clustersim.core.simulator import Simulator
 
 from matplotlib import pyplot as plt
+from simpy import Environment
 
+env = Environment()
+nodes = [Node(env, 1, {'gpu': Gpu([1, 1, 1, 1])})]
+workload = UnifiedRandomWorkload(
+    env,
+    income_range=(4, 12), task_timerange=(16, 36),
+    resources={'gpu': Gpu([0.5, 0.5])})
+dispatcher = RandomDispatcher(env, workload, [BasicScheduler(env, nodes)])
 sim = Simulator(
-    workloads=[
-        UnifiedRandomWorkload(income_range=(4, 12),
-                              task_timerange=(16, 36),
-                              resources={'gpu': Gpu([0.5, 0.5])}),
-    ],
-    nodes=[Node(1, {'gpu': Gpu([1, 1, 1, 1])})],
-    dispatcher=RandomDispatcher([BasicScheduler()]),
-    configs={},
-)
+    env,
+    workloads=[workload], nodes=nodes, dispatcher=dispatcher,
+    configs={})
+
 sim.run(until=20000)
 
 # Print out the node statistics

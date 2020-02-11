@@ -3,6 +3,7 @@ import copy
 
 from collections import defaultdict
 
+from simpy import Environment
 
 class Resource:
     def __init__(self):
@@ -123,10 +124,10 @@ class Gpu(Resource):
 
 
 class Node:
-    def __init__(self, node_id: int, resources: Dict[str, Resource]):
-        self.simulator: Optional['Simulator'] = None
-        self.node_id = node_id
-        self.resources = resources
+    def __init__(self, env, node_id: int, resources: Dict[str, Resource]):
+        self.env: Optional[Environment] = env
+        self.node_id: int = node_id
+        self.resources: Dict[str, Resource] = resources
 
         # gather statistics about the node
         self.tasks = 0
@@ -145,8 +146,8 @@ class Node:
             ret[name] = self.resources[name].alloc(resource)
 
         self.tasks += 1
-        self.record('tasks', self.tasks)
 
+        self.record('tasks', self.tasks)
         self.record('gpu-util', self.resources['gpu'].utilization())
 
         return ret
@@ -160,7 +161,7 @@ class Node:
         self.record('gpu-util', self.resources['gpu'].utilization())
 
     def record(self, key: str, value: float):
-        assert self.simulator is not None, \
-            'Simulator not initialized when recording'
+        assert self.env is not None, \
+            'Environment not initialized when recording'
 
-        self.records[key].append((self.simulator.env.now, value))
+        self.records[key].append((self.env.now, value))

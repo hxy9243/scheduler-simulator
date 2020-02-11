@@ -1,15 +1,19 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 import random
 from collections import defaultdict
 
-from .resources import Node, Resource
+from simpy import Environment
+
+from clustersim.core.resources import Node, Resource
+from clustersim.core.workload import Workload, Job, Task
 
 
 class Scheduler:
-    def __init__(self):
-        self.queue = []
-        self.simulator = None
-        self.records = []
+    def __init__(self, env: Environment, nodes: List[Node]):
+        self.queue: List[Union[Task, Job]] = []
+        self.env: Environment = env
+        self.nodes: List[Node] = nodes
+        self.records: defaultdict = defaultdict(list)
 
     def schedule(self, task):
         raise NotImplementedError('Not implemented')
@@ -19,10 +23,8 @@ class Scheduler:
 
 
 class BasicScheduler(Scheduler):
-    def __init__(self):
-        Scheduler.__init__(self)
-
-        self.records = defaultdict(list)
+    def __init__(self, env: Environment, nodes: List[Node]):
+        Scheduler.__init__(self, env, nodes)
 
     def add(self, job):
         self.queue.append(job)
@@ -31,50 +33,47 @@ class BasicScheduler(Scheduler):
         assert isinstance(resources, dict), \
             'Resource should be described as dictionary'
 
-        return any(node.satisfy(resources)
-                   for node in self.simulator.nodes)
+        return any(node.satisfy(resources) for node in self.nodes)
 
     def find_node(self, resources) -> Optional[Node]:
-        for node in self.simulator.nodes:
+        for node in self.nodes:
             if node.satisfy(resources):
                 return node
         return None
 
     def schedule(self, job, node, alloc):
-        self.simulator.log('Job {} scheduled'.format(job))
+        # self.simulator.log('Job {} scheduled'.format(job))
 
-        job.scheduled_time = self.simulator.env.now
-        self.simulator.env.process(job.run(self, node, alloc))
+        job.scheduled_time = self.env.now
+        self.env.process(job.run(self.records, node, alloc))
 
     def run(self):
-        assert self.simulator is not None, 'Scheduler simulator is none'
+        assert self.env is not None, 'Scheduler environment is none'
 
         while True:
             for i, job in enumerate(self.queue):
                 node = self.find_node(job.resources)
                 if node:
-                    yield self.simulator.env.timeout(1)
+                    yield self.env.timeout(1)
                     alloc = node.alloc(job.resources)
 
                     self.queue.pop(i)
                     self.schedule(job, node, alloc)
 
-            yield self.simulator.env.timeout(1)
-            self.simulator.env.step()
+            yield self.env.timeout(1)
+            self.env.step()
 
     def record(self, key: str, value: float):
-        #print((self.simulator.env.now, self.resources['gpu']))
-
-        self.records[key].append((self.simulator.env.now, value))
+        self.records[key].append((self.env.now, value))
 
 
 class Dispatcher:
-    def __init__(self, schedulers: List[Scheduler]):
-        self.simulator: Optional['Simulator'] = None
+    def __init__(self, env: Environment, workload: Workload, schedulers: List[Scheduler]):
+        self.env: Optional[Environment] = env
+        self.workload = workload
         self.schedulers = schedulers
 
     def add_scheduler(self, scheduler):
-        scheduler.simulator = self.simulator
         self.schedulers.append(scheduler)
 
     def dispatch(self, job):
@@ -82,11 +81,20 @@ class Dispatcher:
 
 
 class RandomDispatcher(Dispatcher):
-    def __init__(self, schedulers):
-        Dispatcher.__init__(self, schedulers)
+    def __init__(self, env: Environment, workload: Workload, schedulers: List[Scheduler]):
+        Dispatcher.__init__(self, env, workload, schedulers)
 
     def dispatch(self, job):
-        # dispatch the job to scheduler
+        """dispatch the job to scheduler"""
         scheduler = random.choice(self.schedulers)
-
         scheduler.add(job)
+
+    def run(self):
+        assert self.env is not None, 'No environment specified'
+
+        while True:
+            if self.workload.queue:
+                self.dispatch(self.workload.queue.pop(0))
+
+            yield self.env.timeout(0)
+            self.env.step()
