@@ -92,6 +92,9 @@ class RandomDispatcher(Dispatcher):
     def run(self):
         assert self.env is not None, 'No environment specified'
 
+        for scheduler in self.schedulers:
+            self.env.process(scheduler.run())
+
         while True:
             if self.workload.queue:
                 self.dispatch(self.workload.queue.pop(0))

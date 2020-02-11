@@ -37,7 +37,4 @@ class Simulator:
 
         self.env.process(self.dispatcher.run())
 
-        for scheduler in self.dispatcher.schedulers:
-            self.env.process(scheduler.run())
-
         self.env.run(until=until)
