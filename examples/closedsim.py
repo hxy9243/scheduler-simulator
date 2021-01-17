@@ -4,26 +4,29 @@ from clustersim.core.workload import Task, Job, UnifiedRandomWorkload
 from clustersim.core.resources import Cpu, Mem, Gpu, Node
 import clustersim.core.scheduler
 
-from matplotlib import pyplot as plt
 from simpy import Environment
 
+from matplotlib import pyplot as plt
+
 sim = Simulator()
+
 
 sim.add_node({'gpu': Gpu([1, 1, 1, 1])})
 dispatcher = sim.add_dispatcher('random')
 
-dispatcher.add_workload('unified_random',
-                        income_range=(4, 12), tasktime_range=(16, 36),
-                        resources={'gpu': Gpu([0.5, 0.5])})
+for _ in range(4):
+    dispatcher.add_workload('closed_random',
+                            income_range=(0, 0), tasktime_range=(10, 20),
+                            resources={'gpu': Gpu([0.4, 0.8])})
 dispatcher.add_scheduler('basic', sim.nodes)
 
-sim.run(until=20000)
+sim.run(until=1000)
 
-# Print out the node statistics
 node_stats = sim.nodes[0].records
 index = [t[0] for t in node_stats['gpu-util']]
 value = [t[1] for t in node_stats['gpu-util']]
-# Print out the task statistics
+
+
 s_rec = sim.dispatcher.schedulers[0].records
 task_runtime = [v[1] for v in s_rec['task_runtime']]
 task_waittime = [v[1] for v in s_rec['task_waittime']]
@@ -47,3 +50,14 @@ sub[1][1].plot(index, value)
 sub[1][1].set_title('gpu utilization')
 
 plt.show()
+
+
+""" node_stats = sim.nodes[0].records
+index = [t[0] for t in node_stats['gpu-util']]
+value = [t[1] for t in node_stats['gpu-util']]
+
+print(node_stats)
+
+print(index)
+print(value)
+ """
