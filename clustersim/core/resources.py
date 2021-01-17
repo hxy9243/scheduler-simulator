@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from simpy import Environment
 
-AllocType = Dict[str, 'Resource']
+ResourcesMapType = Dict[str, 'Resource']
 
 
 class Resource:
@@ -41,7 +41,7 @@ class Cpu(Resource):
         return cpu
 
     def dealloc(self, cpu: float):
-        assert self.remaining+cpu <= self.cpu, \
+        assert self.remaining + cpu <= self.cpu, \
             'Error dealloc resources: remaining more than original'
         self.remaining += cpu
 
@@ -63,7 +63,7 @@ class Mem(Resource):
         return mem
 
     def dealloc(self, mem: float):
-        assert self.remaining+mem <= self.mem, \
+        assert self.remaining + mem <= self.mem, \
             'Error dealloc resources: remaining more than original'
         self.remaining += mem
 
@@ -93,6 +93,7 @@ class Gpu(Resource):
         for i, req in enumerate(requests):
             if availables[i] < req:
                 return False
+
         return True
 
     def alloc(self, request: 'Gpu') -> 'Gpu':
@@ -127,10 +128,10 @@ class Gpu(Resource):
 
 
 class Node:
-    def __init__(self, env, node_id: int, resources: AllocType):
+    def __init__(self, env, node_id: int, resources: ResourcesMapType):
         self.env: Optional[Environment] = env
         self.node_id: int = node_id
-        self.resources: AllocType = resources
+        self.resources: ResourcesMapType = resources
 
         # gather statistics about the node
         self.tasks = 0
@@ -139,12 +140,19 @@ class Node:
     def __repr__(self):
         return 'Node {} with resources {}'.format(self.node_id, self.resources)
 
-    def satisfy(self, resources: AllocType) -> bool:
+    def satisfy(self, resources: ResourcesMapType) -> bool:
+        print('%d: Try to allocate %s with %s' %
+              (self.env.now, resources['gpu'], self.resources['gpu']))
+
         return all(self.resources[name].satisfy(resource)
                    for name, resource in resources.items())
 
-    def alloc(self, resources: AllocType) -> AllocType:
-        ret: AllocType = {}
+    def alloc(self, resources: ResourcesMapType) -> ResourcesMapType:
+        ret: ResourcesMapType = {}
+
+        print('%d: Allocated %s with %s' %
+              (self.env.now, resources['gpu'], self.resources['gpu']))
+
         for name, resource in resources.items():
             ret[name] = self.resources[name].alloc(resource)
 
@@ -155,7 +163,7 @@ class Node:
 
         return ret
 
-    def dealloc(self, resources: AllocType):
+    def dealloc(self, resources: ResourcesMapType):
         for name, resource in resources.items():
             self.resources[name].dealloc(resource)
 
@@ -166,5 +174,12 @@ class Node:
     def record(self, key: str, value: float):
         assert self.env is not None, \
             'Environment not initialized when recording'
+
+        """ if self.env.now != 0:
+            self.records[key].append((self.env.now-1, self.records[key])) """
+
+        if self.env.now != 0 and len(self.records[key]) > 0:
+            self.records[key].append(
+                (self.env.now - 1, self.records[key][-1][1]))
 
         self.records[key].append((self.env.now, value))

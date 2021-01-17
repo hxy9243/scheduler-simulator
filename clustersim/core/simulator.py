@@ -1,10 +1,11 @@
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Optional, Union
 
-from clustersim.core.scheduler import Dispatcher, Scheduler, RandomDispatcher
-from clustersim.core.resources import Node
-from clustersim.core.workload import Workload, Task, Job
+from .scheduler import get_dispatcher, Dispatcher
+from .resources import Node, Resource, ResourcesMapType
+from .workload import Workload, Task, Job
 
 import simpy
+from simpy import Environment
 
 
 def log():
@@ -12,17 +13,31 @@ def log():
 
 
 class Simulator:
-    def __init__(self, env: simpy.Environment,
-                 workloads: List[Workload], nodes: List[Node],
-                 dispatcher: Dispatcher, configs: Dict[str, Any]):
-        self.env: simpy.Environment = env
+    def __init__(self, configs: Dict[str, Any] = {}):
+        """ workloads: List[Workload] = [],
+        nodes: List[Node] = [],
+        dispatcher: Optional[Dispatcher] = None,
+        configs: Dict[str, Any] = {}): """
+
+        self.env = Environment()
         self.inqueue: simpy.Store = simpy.Store(self.env)
 
-        self.nodes = nodes
-        self.workloads = workloads
-        self.dispatcher = dispatcher
+        self.nodes: List[Node] = []
+        self.workloads: List[Workload] = []
+        self.dispatcher: Option[Dispatcher] = None
+        self.configs: Dict[str, Any] = {}
 
-        self.configs = configs
+    def add_node(self, resources: ResourcesMapType) -> Node:
+        node = Node(self.env, len(self.nodes), resources)
+
+        self.nodes.append(node)
+        return node
+
+    def add_dispatcher(self, dispatcherType: str) -> Dispatcher:
+        dispatcher = get_dispatcher(self.env, dispatcherType)
+
+        self.dispatcher = dispatcher
+        return dispatcher
 
     def log(self, msg):
         self.logs.append((self.env.now, msg))
@@ -32,7 +47,7 @@ class Simulator:
             print(log[0], log[1])
 
     def run(self, until=200):
-        for workload in self.workloads:
+        for workload in self.dispatcher.workloads:
             self.env.process(workload.run())
 
         self.env.process(self.dispatcher.run())

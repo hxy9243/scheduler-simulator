@@ -4,8 +4,8 @@ from collections import defaultdict
 
 from simpy import Environment
 
-from clustersim.core.resources import Node, Resource, AllocType
-from clustersim.core.workload import Workload, Work
+from clustersim.core.resources import Node, Resource, ResourcesMapType
+from clustersim.core.workload import Workload, Work, get_workload
 
 
 class Scheduler:
@@ -15,7 +15,7 @@ class Scheduler:
         self.nodes: List[Node] = nodes
         self.records: defaultdict = defaultdict(list)
 
-    def schedule(self, work: Work, node: Node, alloc: AllocType):
+    def schedule(self, work: Work, node: Node, alloc: ResourcesMapType):
         raise NotImplementedError('Not implemented')
 
     def run(self):
@@ -29,7 +29,7 @@ class BasicScheduler(Scheduler):
     def add(self, job):
         self.queue.append(job)
 
-    def satisfy(self, resources: AllocType) -> bool:
+    def satisfy(self, resources: ResourcesMapType) -> bool:
         assert isinstance(resources, dict), \
             'Resource should be described as dictionary'
 
@@ -41,7 +41,7 @@ class BasicScheduler(Scheduler):
                 return node
         return None
 
-    def schedule(self, work: Work, node: Node, alloc: AllocType):
+    def schedule(self, work: Work, node: Node, alloc: ResourcesMapType):
         # self.simulator.log('Job {} scheduled'.format(job))
 
         work.scheduled_time = self.env.now
@@ -61,28 +61,42 @@ class BasicScheduler(Scheduler):
                     self.schedule(job, node, alloc)
 
             yield self.env.timeout(1)
-            self.env.step()
 
     def record(self, key: str, value: float):
         self.records[key].append((self.env.now, value))
 
 
+def get_scheduler(env: Environment, schedulerType: str, nodes: List[Node]) -> Scheduler:
+    if schedulerType == 'basic':
+        return BasicScheduler(env, nodes)
+
+
 class Dispatcher:
-    def __init__(self, env: Environment, workload: Workload, schedulers: List[Scheduler]):
+    def __init__(self, env: Environment):
         self.env: Optional[Environment] = env
-        self.workload = workload
-        self.schedulers = schedulers
+        self.workloads: List[Workload] = []
+        self.schedulers: List[Scheduler] = []
 
-    def add_scheduler(self, scheduler):
+    def add_workload(self, workloadType: str, **args) -> Workload:
+        workload = get_workload(self.env, workloadType, **args)
+
+        self.workloads.append(workload)
+        return workload
+
+    def add_scheduler(self, schedulerType: str, nodes: List[Node]) -> Scheduler:
+        scheduler = get_scheduler(self.env, schedulerType, nodes)
+
         self.schedulers.append(scheduler)
-
-    def dispatch(self, job):
-        raise NotImplementedError('Not implemented')
+        return scheduler
 
 
-class RandomDispatcher(Dispatcher):
-    def __init__(self, env: Environment, workload: Workload, schedulers: List[Scheduler]):
-        Dispatcher.__init__(self, env, workload, schedulers)
+def dispatch(self, job):
+    raise NotImplementedError('Not implemented')
+
+
+class SingleDispatcher(Dispatcher):
+    def __init__(self, env: Environment):
+        Dispatcher.__init__(self, env)
 
     def dispatch(self, job):
         """dispatch the job to scheduler"""
@@ -96,8 +110,16 @@ class RandomDispatcher(Dispatcher):
             self.env.process(scheduler.run())
 
         while True:
-            if self.workload.queue:
-                self.dispatch(self.workload.queue.pop(0))
+            for workload in self.workloads:
+                if workload.queue:
+                    self.dispatch(workload.queue.pop(0))
 
-            yield self.env.timeout(0)
-            self.env.step()
+                yield self.env.timeout(0)
+                self.env.step()
+
+
+def get_dispatcher(env: Environment, dispatcherType: str) -> Dispatcher:
+    if dispatcherType == 'random':
+        return SingleDispatcher(env)
+
+    raise Exception(f'No dispatcher type: {dispatcherType}')

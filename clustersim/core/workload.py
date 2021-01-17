@@ -16,8 +16,7 @@ import random
 from collections import defaultdict
 
 from simpy import Environment
-
-from clustersim.core.resources import Resource, Node, AllocType
+from clustersim.core.resources import Resource, Node, ResourcesMapType
 
 
 class Workload:
@@ -30,6 +29,9 @@ class Workload:
     def generate(self) -> Union['Task', 'Job']:
         raise NotImplementedError('Not implemented')
 
+    def finish_work(self, id: int):
+        raise NotImplementedError('Not implemented')
+
     def run(self):
         raise NotImplementedError('Not implemented')
 
@@ -39,12 +41,12 @@ class UnifiedRandomWorkload(Workload):
     """
 
     def __init__(self, env: Environment,
-                 income_range: Tuple[int, int], task_timerange: Tuple[int, int],
-                 resources: AllocType):
+                 income_range: Tuple[int, int], tasktime_range: Tuple[int, int],
+                 resources: ResourcesMapType):
         Workload.__init__(self, env)
 
         self.income_range = income_range
-        self.task_timerange = task_timerange
+        self.tasktime_range = tasktime_range
         self.resources = resources
         self.queue: List[Union[Task, Job]] = []
 
@@ -53,12 +55,15 @@ class UnifiedRandomWorkload(Workload):
     def generate(self) -> Union['Task', 'Job']:
         assert self.env, 'Environment of workload not initialized'
 
-        task = Task(self.env, self.jobid,
+        task = Task(self, self.jobid,
                     self.jobid,
-                    random.uniform(*self.task_timerange),
+                    random.uniform(*self.tasktime_range),
                     resources=self.resources)
         self.jobid += 1
         return task
+
+    def finish_work(self, id: int):
+        return
 
     def run(self):
         assert self.env is not None, 'No environment specified'
@@ -68,6 +73,55 @@ class UnifiedRandomWorkload(Workload):
             job = self.generate()
 
             self.queue.append(job)
+
+
+class ClosedWorkload(Workload):
+    """ generate one job when there's one finished
+    """
+
+    def __init__(self, env: Environment,
+                 income_range: Tuple[int, int], tasktime_range: Tuple[int, int],
+                 resources: ResourcesMapType):
+        Workload.__init__(self, env)
+
+        self.income_range = income_range
+        self.tasktime_range = tasktime_range
+        self.resources = resources
+        self.queue: List[Union[Task, Job]] = []
+
+        self.jobid = 1
+        self.task_event = None
+
+    def generate(self) -> Union['Task']:
+        task = Task(self, self.jobid, self.jobid,
+                    random.uniform(*self.tasktime_range), resources=self.resources)
+        self.jobid += 1
+
+        return task
+
+    def finish_work(self, taskid: int):
+        self.task_event.succeed()
+        self.task_event = self.env.event()
+
+    def run(self):
+        assert self.env is not None, 'No environment specified'
+
+        print('Start generating work')
+        self.task_event = self.env.event()
+
+        while True:
+            job = self.generate()
+            self.queue.append(job)
+
+            yield self.task_event
+            # self.env.step()
+
+
+def get_workload(env: Environment, workloadType: str, **args) -> Workload:
+    if workloadType == 'unified_random':
+        return UnifiedRandomWorkload(env, **args)
+    elif workloadType == 'closed_random':
+        return ClosedWorkload(env, **args)
 
 
 class WorkStatus(Enum):
@@ -83,7 +137,7 @@ class Work:
     scheduled_time: float = 0.0
     finished_time: float = 0.0
 
-    def run(self, records: Dict, node: Node, alloc: AllocType):
+    def run(self, records: Dict, node: Node, alloc: ResourcesMapType):
         raise NotImplementedError('Not implemented')
 
 
@@ -102,17 +156,20 @@ class Task(Work):
     nodes, and execute a certain amount of time
     """
 
-    def __init__(self, env: Environment,
+    def __init__(self, workload: Workload,
                  jobid: int, taskid: int,
-                 task_runtime: float, resources: AllocType):
-        self.env: Optional[Environment] = env
+                 task_runtime: float,
+                 resources: ResourcesMapType):
+
+        self.workload: Workload = workload
+        self.env: Optional[Environment] = workload.env
         self.jobid: int = jobid
         self.taskid: int = taskid
         self.task_runtime: float = task_runtime
         self.resources: Dict = resources
-        self.allocation: AllocType = {}
+        self.allocation: ResourcesMapType = {}
 
-        self.queued_time: float = env.now
+        self.queued_time: float = workload.env.now
         self.scheduled_time: float = 0.0
         self.finished_time: float = 0.0
 
@@ -127,7 +184,7 @@ class Task(Work):
     def assign(self, node: Node):
         pass
 
-    def run(self, records: Dict, node: Node, alloc: AllocType):
+    def run(self, records: Dict, node: Node, alloc: ResourcesMapType):
         self.node = node
         self.allocation = alloc
 
@@ -141,6 +198,8 @@ class Task(Work):
         yield self.env.timeout(self.task_runtime)
         now = self.env.now
         self.finished_time = now
+
+        self.workload.finish_work(self.taskid)
 
         assert self.finished_time - self.queued_time >= self.task_runtime, \
             'Tasks runs doesn\'t run for enough time'
