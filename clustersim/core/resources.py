@@ -1,9 +1,10 @@
 from typing import List, Dict, Tuple, Set, Any, Optional
 import copy
-
-from collections import defaultdict
+from dataclasses import dataclass
 
 from simpy import Environment
+
+from pandas import DataFrame
 
 ResourcesMapType = Dict[str, 'Resource']
 
@@ -71,7 +72,10 @@ class Mem(Resource):
         return (self.mem - self.remaining) / self.mem
 
 
-class Gpu(Resource):
+Gpus = List[float]
+
+
+class GpuSet(Resource):
     def __init__(self, gpus: List[float]):
         """ Gpu resource is modeled as list of gpu memory of all gpus on a node.
         """
@@ -79,16 +83,16 @@ class Gpu(Resource):
         self.remaining = copy.deepcopy(gpus)
 
     def __repr__(self):
-        return '<GPU res, max: {}, remain: {}>'.format(self.gpus, self.remaining)
+        return '<GPU set: max: {}, remain: {}>'.format(self.gpus, self.remaining)
 
-    def satisfy(self, request: 'Gpu') -> bool:
+    def satisfy(self, request: Gpus) -> bool:
         """ gpu requests are modeled as a list of memory requested for each gpu,
         assuming allocations are all from distinct gpus
         """
         # get the sorted remaining and requested memory, and see if all requests
         # can be satisfied
         availables = sorted(self.remaining, reverse=True)
-        requests = sorted(request.gpus, reverse=True)
+        requests = sorted(request, reverse=True)
 
         for i, req in enumerate(requests):
             if availables[i] < req:
@@ -96,30 +100,17 @@ class Gpu(Resource):
 
         return True
 
-    def alloc(self, request: 'Gpu') -> 'Gpu':
-        assert self.satisfy(request), 'Gpu resource not available'
+    def alloc(self, request: Gpus):
+        # print(' allocating node gpu resources %s with %s' %
+        #       (self.remaining, request))
 
-        alloc = [0.0 for _ in self.gpus]
-        alloced: Set[int] = set()
+        for i, req in enumerate(request):
+            assert self.remaining[i] >= req, 'Gpu resource not available'
+            self.remaining[i] -= req
 
-        for req in request.gpus:
-            found = False
-
-            for i, resource in enumerate(self.remaining):
-                if i not in alloced and req <= resource:
-                    self.remaining[i] -= req
-                    alloc[i] = req
-                    alloced.add(i)
-                    found = True
-                    break
-
-            assert found, 'Gpu resource could not be allocated'
-
-        return Gpu(alloc)
-
-    def dealloc(self, request):
-        for i, gpu in enumerate(request.gpus):
-            self.remaining[i] += gpu
+    def dealloc(self, request: Gpus):
+        for i, req in enumerate(request):
+            self.remaining[i] += req
             assert self.remaining[i] <= self.gpus[i], \
                 'Error dealloc resources: remaining more than original'
 
@@ -135,14 +126,19 @@ class Node:
 
         # gather statistics about the node
         self.tasks = 0
-        self.records: Dict[str, List[tuple]] = defaultdict(lambda: [(0, 0.0)])
+        self.records = DataFrame(
+            columns=['cpu-util', 'mem-util', 'gpu-util', 'tasks'])
+
+        # self.records: Dict[str, List[tuple]] = defaultdict(lambda: [(0, 0.0)])
 
     def __repr__(self):
         return 'Node {} with resources {}'.format(self.node_id, self.resources)
 
     def satisfy(self, resources: ResourcesMapType) -> bool:
-        print('%d: Try to allocate %s with %s' %
-              (self.env.now, resources['gpu'], self.resources['gpu']))
+        success = all(self.resources[name].satisfy(resource)
+                      for name, resource in resources.items())
+        # print('%d: Try to allocate %s with %s %s' %
+        #       (self.env.now, resources['gpus'], self.resources['gpus'], success))
 
         return all(self.resources[name].satisfy(resource)
                    for name, resource in resources.items())
@@ -150,16 +146,18 @@ class Node:
     def alloc(self, resources: ResourcesMapType) -> ResourcesMapType:
         ret: ResourcesMapType = {}
 
-        print('%d: Allocated %s with %s' %
-              (self.env.now, resources['gpu'], self.resources['gpu']))
+        # print('%d: Allocated %s with %s' %
+        #       (self.env.now, resources['gpus'], self.resources['gpus']))
 
         for name, resource in resources.items():
             ret[name] = self.resources[name].alloc(resource)
 
         self.tasks += 1
 
-        self.record('tasks', self.tasks)
-        self.record('gpu-util', self.resources['gpu'].utilization())
+        self.record({
+            'task': self.tasks,
+            'gpu-util': self.resources['gpus'] .utilization(),
+        })
 
         return ret
 
@@ -168,18 +166,24 @@ class Node:
             self.resources[name].dealloc(resource)
 
         self.tasks -= 1
-        self.record('tasks', self.tasks)
-        self.record('gpu-util', self.resources['gpu'].utilization())
 
-    def record(self, key: str, value: float):
+        self.record({
+            'task': self.tasks,
+            'gpu-util': self.resources['gpus'] .utilization(),
+        })
+
+    def record(self, row: Dict):
         assert self.env is not None, \
             'Environment not initialized when recording'
 
-        """ if self.env.now != 0:
-            self.records[key].append((self.env.now-1, self.records[key])) """
+        self.records = self.records.append(
+            DataFrame(row, index=[self.env.now]))
 
-        if self.env.now != 0 and len(self.records[key]) > 0:
-            self.records[key].append(
-                (self.env.now - 1, self.records[key][-1][1]))
+        # """ if self.env.now != 0:
+        #     self.records[key].append((self.env.now-1, self.records[key])) """
 
-        self.records[key].append((self.env.now, value))
+        # if self.env.now != 0 and len(self.records[key]) > 0:
+        #     self.records[key].append(
+        #         (self.env.now - 1, self.records[key][-1][1]))
+
+        # self.records[key].append((self.env.now, value))
