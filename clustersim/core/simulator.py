@@ -1,15 +1,11 @@
 from typing import List, Dict, Any, Optional, Union
 
-from .scheduler import get_dispatcher, Dispatcher
+from .dispatcher import get_dispatcher, Dispatcher
 from .resources import Node, Resource, ResourcesMapType
 from .workload import Workload, Task, Job
 
 import simpy
 from simpy import Environment
-
-
-def log():
-    pass
 
 
 class Simulator:
@@ -24,7 +20,7 @@ class Simulator:
 
         self.nodes: List[Node] = []
         self.workloads: List[Workload] = []
-        self.dispatcher: Option[Dispatcher] = None
+        self.dispatcher: Optional[Dispatcher] = None
         self.configs: Dict[str, Any] = {}
 
     def add_node(self, resources: ResourcesMapType) -> Node:

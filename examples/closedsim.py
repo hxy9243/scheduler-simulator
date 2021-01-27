@@ -1,15 +1,11 @@
 from clustersim.core.simulator import Simulator
-
-from clustersim.core.workload import Task, Job, UnifiedRandomWorkload
+from clustersim.core.workload import ClosedWorkload
 from clustersim.core.resources import Cpu, Mem, Gpus, GpuSet, Node
 import clustersim.core.scheduler
-
-from simpy import Environment
 
 from matplotlib import pyplot as plt
 
 sim = Simulator()
-
 
 sim.add_node({'gpus': GpuSet([1, 1, 1, 1])})
 dispatcher = sim.add_dispatcher('random')
