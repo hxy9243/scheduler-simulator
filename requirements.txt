@@ -1,2 +1,4 @@
-matplotlib
-simpy
+matplotlib>=3.3.2
+simpy>=4.0.0
+jupyterlab>=3.0
+pandas>=1.2.0
