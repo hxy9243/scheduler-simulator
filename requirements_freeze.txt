@@ -32,7 +32,7 @@ jupyterlab-server==2.1.2
 kiwisolver==1.2.0
 MarkupSafe==1.1.1
 matplotlib==3.3.2
-mistune==0.8.4
+mistune==2.0.3
 mypy-extensions==0.4.3
 nbclassic==0.2.6
 nbclient==0.5.1
