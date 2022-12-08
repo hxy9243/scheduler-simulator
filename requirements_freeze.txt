@@ -7,7 +7,7 @@ autopep8==1.5.4
 Babel==2.9.0
 backcall==0.2.0
 bleach==3.2.1
-certifi==2020.6.20
+certifi==2022.12.7
 cffi==1.14.4
 chardet==4.0.0
 -e git+git@github.com:hxy9243/scheduler_simulator.git@35ad4b62a567930ede95dc406e610db991628465#egg=clustersim
